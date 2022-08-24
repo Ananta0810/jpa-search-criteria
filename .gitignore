@@ -1,3 +1,10 @@
-target/
-.idea/
-.vscode/
+target/**
+.idea/**
+.vscode/**
+out/**
+**/**.iml
+/src/main/java/META-INF
+*.class
+/target/
+/src/main/java/META-INF/
+target/classes/ananta/api/SearchCriteria.class

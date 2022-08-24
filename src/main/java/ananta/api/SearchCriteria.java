@@ -52,9 +52,10 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     private final Joiner joiner = new Joiner();
     private Pageable page;
     
-    public void init(EntityManager entityManager) {
-        em = entityManager;
-        List<Class<?>> entityClasses = em.getMetamodel()
+    public static void init(EntityManager entityManager) {
+        Preconditions.checkNotNull(entityManager, "Entity manager should not be null.");
+    
+        List<Class<?>> entityClasses = entityManager.getMetamodel()
             .getEntities()
             .stream()
             .map(entity -> {
@@ -66,10 +67,12 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
     
+        em = entityManager;
         entities = CollectionHelper.mapOf(entityClasses, CriteriaHelper::tableNameOf);
     }
     
     private SearchCriteria(Class<T> clazz) {
+        Preconditions.checkNotNull(em, "Entity manager have not been initialized. Please call init method.");
         this.cb = em.getCriteriaBuilder();
         this.query = cb.createQuery(Object[].class);
         this.returnType = clazz;
