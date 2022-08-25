@@ -4,18 +4,14 @@ import ananta.api.helpers.CollectionHelper;
 import ananta.api.helpers.CriteriaHelper;
 import ananta.api.helpers.ReflectionHelper;
 import ananta.api.helpers.StringHelper;
+import ananta.api.helpers.TypeHelper;
 import ananta.api.models.*;
 import ananta.api.statics.ForAll;
 import ananta.api.statics.ForCollection;
 import ananta.api.statics.ForNumber;
 import ananta.api.statics.ForString;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -51,12 +47,12 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     private final CriteriaBuilder cb;
     private final CriteriaQuery<Object[]> query;
     private final Class<T> returnType;
-    private final List<QueryClause> predicates = Lists.newArrayList();
+    private final List<QueryClause> predicates = CollectionHelper.emptyList();
     private final Joiner joiner = new Joiner();
     private Pageable page;
     
     public static void init(EntityManager entityManager) {
-        Preconditions.checkNotNull(entityManager, "Entity manager should not be null.");
+        TypeHelper.checkNull(entityManager, "Entity manager should not be null.");
     
         List<Class<?>> entityClasses = entityManager.getMetamodel()
             .getEntities()
@@ -75,7 +71,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     private SearchCriteria(Class<T> clazz) {
-        Preconditions.checkNotNull(em, "Entity manager have not been initialized. Please call init method.");
+        TypeHelper.checkNull(em, "Entity manager have not been initialized. Please call init method.");
         this.cb = em.getCriteriaBuilder();
         this.query = cb.createQuery(Object[].class);
         this.returnType = clazz;
@@ -83,13 +79,13 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     
     public static <T, R> SearchCriteria<T, R> select(Class<T> clazz) {
-        Preconditions.checkNotNull(clazz, "Can't select null class.");
+        TypeHelper.checkNull(clazz, "Can't select null class.");
         return new SearchCriteria<>(clazz);
     }
     
     @SuppressWarnings("unchecked")
     public static <T> SearchCriteria<T, T> selectFrom(Class<T> clazz) {
-        Preconditions.checkNotNull(clazz, "Can't select null class.");
+        TypeHelper.checkNull(clazz, "Can't select null class.");
         return (SearchCriteria<T, T>) new SearchCriteria<>(clazz).from((Class<Object>) clazz);
     }
     
@@ -111,7 +107,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     @Override
     @SuppressWarnings("unchecked")
     public SearchCriteria<T, ROOT> from(String tableName) {
-        Preconditions.checkNotNull(tableName, "Table name must not be null.");
+        TypeHelper.checkNull(tableName, "Table name must not be null.");
         Class<ROOT> rootClass = (Class<ROOT>) getTableClass(tableName);
         
         return from(rootClass, tableName);
@@ -120,7 +116,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     @Override
     @SuppressWarnings("unchecked")
     public SearchCriteria<T, ROOT> from(String tableName, String as) {
-        Preconditions.checkNotNull(tableName, "Table name must not be null.");
+        TypeHelper.checkNull(tableName, "Table name must not be null.");
         Class<ROOT> rootClass = (Class<ROOT>) getTableClass(tableName);
         return from(rootClass, as);
     }
@@ -173,7 +169,6 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         return this;
     }
     
-    @NotNull
     private Optional<Field> getFieldWithJoinTable(final String tableName) {
         Class<?> lastClazz = joiner.getLast().getClazz();
         return ReflectionHelper
@@ -265,8 +260,8 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     private void checkKeyAndAction(final String key, final Object action) {
-        Preconditions.checkNotNull(key, "Key must not be null.");
-        Preconditions.checkNotNull(action, "Action must not be null.");
+        TypeHelper.checkNull(key, "Key must not be null.");
+        TypeHelper.checkNull(action, "Action must not be null.");
     }
     
     @Override
@@ -356,7 +351,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public SearchCriteria<T, ROOT> withPage(int pageNumber, int size, String orderBy, boolean isAscending) {
-        Preconditions.checkNotNull(orderBy, "Order by must not be null.");
+        TypeHelper.checkNull(orderBy, "Order by must not be null.");
         
         Sort.Direction sort = isAscending ? Sort.Direction.ASC : Sort.Direction.DESC;
         int page = pageNumber - 1;
@@ -401,7 +396,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public Set<T> toSet() {
-        return Sets.newHashSet(toList());
+        return CollectionHelper.setOf(toList());
     }
     @Override
     public Page<T> toPage() {
@@ -445,12 +440,10 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         return Optional.ofNullable(getObjectFrom(fields, value));
     }
     
-    @NotNull
     private Selection<?>[] getSelections(final List<String> fields) {
         return fields.stream().map(field -> joiner.getRoot().get(field)).toArray(Selection[]::new);
     }
     
-    @NotNull
     private List<String> getSelectFields() {
         return ReflectionHelper
             .getNonStaticFieldsOf(returnType).stream()
@@ -459,7 +452,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     private T getObjectFrom(final List<String> fields, final Object[] values) {
-        HashMap<String, Object> fieldValueMap = Maps.newHashMap();
+        HashMap<String, Object> fieldValueMap = CollectionHelper.emptyMap();
         for (int i = 0; i < fields.size() - 1; ++i) {
             String field = fields.get(i);
             Object value = values[i];

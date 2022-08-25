@@ -1,14 +1,12 @@
 package ananta.api.helpers;
 
 import lombok.experimental.UtilityClass;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 @UtilityClass
 public class StringHelper {
     private final static String EMPTY = "";
     
-    public static @NotNull String afterOf(@Nullable final String word, @Nullable final String origin) {
+    public static String afterOf(final String word, final String origin) {
         if (word == null || origin == null) {
             return EMPTY;
         }
@@ -19,7 +17,7 @@ public class StringHelper {
         return origin.substring(index + 1);
     }
     
-    public static @NotNull String beforeOf(@Nullable final String word, @Nullable final String origin) {
+    public static String beforeOf(final String word, final String origin) {
         if (word == null || origin == null) {
             return EMPTY;
         }
@@ -30,11 +28,11 @@ public class StringHelper {
         return origin.substring(0, index);
     }
     
-    public static boolean isBlank(@Nullable String value) {
+    public static boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
     
-    public static boolean isNotBlank(@Nullable String value) {
+    public static boolean isNotBlank(String value) {
         return !isBlank(value);
     }
 }

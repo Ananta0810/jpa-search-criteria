@@ -1,7 +1,7 @@
 package ananta.api.models;
 
 import ananta.api.helpers.StringHelper;
-import com.google.common.base.Preconditions;
+import ananta.api.helpers.TypeHelper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,7 +16,7 @@ public class TableJoin {
     private static final String SEPARATOR = ".";
     
     public static TableJoin of(String key) {
-        Preconditions.checkNotNull(key, "Key must not be null.");
+        TypeHelper.checkNull(key, "Key must not be null.");
         if (!key.contains(SEPARATOR)) {
             return TableJoin.builder().column(key).build();
         }

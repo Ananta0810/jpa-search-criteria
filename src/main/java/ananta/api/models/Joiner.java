@@ -2,8 +2,6 @@ package ananta.api.models;
 
 import ananta.api.helpers.CollectionHelper;
 import ananta.api.helpers.ReflectionHelper;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import lombok.Getter;
 
 import javax.persistence.criteria.CriteriaQuery;
@@ -17,11 +15,11 @@ import java.util.Objects;
 import java.util.Optional;
 
 public class Joiner {
-    private final List<JoinPoint> joinPoints = Lists.newArrayList();
+    private final List<JoinPoint> joinPoints = CollectionHelper.emptyList();
     
     @Getter
     private JoinPoint rootJoin;
-    HashMap<String, From<?, ?>> joinMap = Maps.newHashMap();
+    HashMap<String, From<?, ?>> joinMap = CollectionHelper.emptyMap();
     @Getter
     private Root<?> root;
     

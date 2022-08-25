@@ -2,8 +2,6 @@ package ananta.api.helpers;
 
 import ananta.api.models.QueryException;
 import lombok.experimental.UtilityClass;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.util.ClassUtils;
 
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
@@ -14,7 +12,7 @@ import javax.persistence.Table;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -31,27 +29,25 @@ public class CriteriaHelper {
             );
     }
     
-    public static boolean isColumn(@NotNull final Field field) {
+    public static boolean isColumn(final Field field) {
         Class<?> type = field.getType();
-        boolean isPrimitiveType = ClassUtils.isPrimitiveOrWrapper(type);
-        if (isPrimitiveType || type.isAssignableFrom(String.class)) {
+        if (ReflectionHelper.isPrimitive(field) || type.isAssignableFrom(String.class)) {
             return true;
         }
         if (ReflectionHelper.isCollection(field)) {
             return false;
         }
         Predicate<Annotation> isMappingAnnotation = ann -> RELATIONSHIP_ANNOTATIONS.contains(ann.annotationType());
-        ArrayList<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
+        List<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
         return annotations.stream().noneMatch(isMappingAnnotation);
     }
     
-    public static boolean isMappingColumn(@NotNull final Field field) {
+    public static boolean isMappingColumn(final Field field) {
         Predicate<Annotation> isMappingAnnotation = ann -> RELATIONSHIP_ANNOTATIONS.contains(ann.annotationType());
-        ArrayList<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
+        List<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
         return annotations.stream().anyMatch(isMappingAnnotation);
     }
     
-    @NotNull
     public static Class<?> getEntityOf(final Field field) {
         if (!ReflectionHelper.isCollection(field)) {
             return field.getType();

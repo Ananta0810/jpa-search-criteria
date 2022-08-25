@@ -1,11 +1,6 @@
 package ananta.api.helpers;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 import lombok.experimental.UtilityClass;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -13,7 +8,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +20,8 @@ import java.util.stream.Stream;
 @UtilityClass
 public class ReflectionHelper {
     
+    private static final Set<Class<?>> wrapperClasses = CollectionHelper.setOf(Boolean.class, Byte.class, Character.class, Double.class, Float.class, Integer.class, Long.class, Short.class, Void.class);
+    
     /**
      * @author Ananta0810
      * Check if a class is extended from other class.
@@ -33,7 +29,7 @@ public class ReflectionHelper {
      * @param clazz can be null.
      * @return true if the class extends or implements the parent class or the input classes is null, otherwise false.
      */
-    public static boolean isChildClassOf(@Nullable Class<?> parentClass, @Nullable Class<?> clazz) {
+    public static boolean isChildClassOf(Class<?> parentClass, Class<?> clazz) {
         if (Objects.isNull(parentClass) || Objects.isNull(clazz)) {
             return false;
         }
@@ -48,9 +44,9 @@ public class ReflectionHelper {
      * @param clazz The class that you want to extract. Class can be null.
      * @return empty list if class is null. Otherwise, return list of field's name.
      */
-    public static List<String> getFieldNamesOf(@Nullable Class<?> clazz) {
+    public static List<String> getFieldNamesOf(Class<?> clazz) {
         if (Objects.isNull(clazz)) {
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
         return getFieldsOf(clazz).stream().map(Field::getName).collect(Collectors.toList());
     }
@@ -62,7 +58,7 @@ public class ReflectionHelper {
      * @param clazz can be null.
      * @return false if inputs are null or when field is not exist in the class. Otherwise, return true.
      */
-    public static boolean existField(@Nullable String fieldName, @Nullable Class<?> clazz) {
+    public static boolean existField(String fieldName, Class<?> clazz) {
         if (fieldName == null || clazz == null) {
             return false;
         }
@@ -76,8 +72,8 @@ public class ReflectionHelper {
      * @param clazz The class that you want to extract. Class can be null.
      * @return empty set if class is null. Otherwise, return set of field's name.
      */
-    public static Set<String> getFieldNameSetOf(@Nullable Class<?> clazz) {
-        return Sets.newHashSet(getFieldNamesOf(clazz));
+    public static Set<String> getFieldNameSetOf(Class<?> clazz) {
+        return CollectionHelper.setOf(getFieldNamesOf(clazz));
     }
     
     /**
@@ -87,9 +83,9 @@ public class ReflectionHelper {
      * @param clazz The class that you want to extract. Class can be null.
      * @return empty list if class is null, otherwise return its fields.
      */
-    public static List<Field> getFieldsOf(@Nullable Class<?> clazz) {
+    public static List<Field> getFieldsOf(Class<?> clazz) {
         if (Objects.isNull(clazz)) {
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
         List<Class<?>> classes = getAncestorClasses(clazz);
         return classes.stream().map(Class::getDeclaredFields).flatMap(Stream::of).collect(Collectors.toList());
@@ -102,9 +98,9 @@ public class ReflectionHelper {
      * @param clazz The class that you want to extract. Class can be null.
      * @return empty list if class is null, otherwise return its fields.
      */
-    public static List<Field> getNonStaticFieldsOf(@Nullable Class<?> clazz) {
+    public static List<Field> getNonStaticFieldsOf(Class<?> clazz) {
         if (Objects.isNull(clazz)) {
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
         List<Class<?>> classes = getAncestorClasses(clazz);
         return classes.stream().map(Class::getDeclaredFields).flatMap(Stream::of).filter(field -> !Modifier.isStatic(field.getModifiers())).collect(Collectors.toList());
@@ -117,7 +113,7 @@ public class ReflectionHelper {
      * @param clazz class which contains the field. If null then return Optional.empty().
      * @return Empty if input is null or can't find the field.
      */
-    public static Optional<Field> getField(@Nullable String fieldName, @Nullable Class<?> clazz) {
+    public static Optional<Field> getField(String fieldName, Class<?> clazz) {
         if (Objects.isNull(fieldName)|| Objects.isNull(clazz)) {
             return Optional.empty();
         }
@@ -132,7 +128,7 @@ public class ReflectionHelper {
      * @param object object that contains the value. Object can be null.
      * @return Optional.empty() if input is null or field can not be accessed. Otherwise, return Optional of object.
      */
-    public static Optional<?> getFieldValue(@Nullable Field field, @Nullable Object object) {
+    public static Optional<?> getFieldValue(Field field, Object object) {
         if (Objects.isNull(field) || Objects.isNull(object)){
             return Optional.empty();
         }
@@ -159,7 +155,7 @@ public class ReflectionHelper {
      * @param clazz Class that contains the field. Class can be null.
      * @return Empty list if input are null or field not found. Otherwise, return list of annotations found.
      */
-    public static List<Annotation> getFieldAnnotations(@Nullable String fieldName, @Nullable Class<?> clazz) {
+    public static List<Annotation> getFieldAnnotations(String fieldName, Class<?> clazz) {
         if (Objects.isNull(fieldName)|| Objects.isNull(clazz)) {
             return List.of();
         }
@@ -172,9 +168,9 @@ public class ReflectionHelper {
      * @param clazz The class that you want to extract. Class can be null.
      * @return empty list if class is null. Otherwise, return annotations of class.
      */
-    public static List<Annotation> getAnnotationsOf(@Nullable Class<?> clazz) {
+    public static List<Annotation> getAnnotationsOf(Class<?> clazz) {
         if (Objects.isNull(clazz)){
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
         List<Class<?>> classes = getAncestorClasses(clazz);
         return classes.stream().map(Class::getAnnotations).flatMap(Stream::of).collect(Collectors.toList());
@@ -185,11 +181,11 @@ public class ReflectionHelper {
      * @param field can be null.
      * @return empty list if field is null. Otherwise, return annotations of the field.
      */
-    public static @NotNull ArrayList<Annotation> getAnnotationsOf(final @Nullable Field field) {
+    public static List<Annotation> getAnnotationsOf(final Field field) {
         if (field == null) {
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
-        return Lists.newArrayList(field.getDeclaredAnnotations());
+        return CollectionHelper.listOf(field.getDeclaredAnnotations());
     }
     
     /**
@@ -198,7 +194,7 @@ public class ReflectionHelper {
      * @param clazz Class that you want to get annotation from. Can't be null.
      * @return Empty Optional if not found. Otherwise, return Optional of annotation.
      */
-    public static @NotNull <T> Optional<T> getAnnotation(final @NotNull Class<T> annotationClass, final @NotNull Class<?> clazz) {
+    public static <T> Optional<T> getAnnotation(final Class<T> annotationClass, final Class<?> clazz) {
         return getAnnotationsOf(clazz).stream()
             .filter(ann -> ann.annotationType().isAssignableFrom(annotationClass))
             .map(annotationClass::cast)
@@ -211,7 +207,7 @@ public class ReflectionHelper {
      * @param field Field that you want to get annotation from. Can't be null.
      * @return Empty Optional if not found. Otherwise, return Optional of annotation.
      */
-    public static @NotNull <T> Optional<T> getAnnotation(final @NotNull Class<T> annotationClass, final @NotNull Field field) {
+    public static <T> Optional<T> getAnnotation(final Class<T> annotationClass, final Field field) {
         return Arrays.stream(field.getAnnotations())
             .filter(ann -> ann.annotationType().isAssignableFrom(annotationClass))
             .map(annotationClass::cast)
@@ -225,8 +221,9 @@ public class ReflectionHelper {
      * @throws IllegalArgumentException If input class is null.
      */
     public static List<Class<?>> getAncestorClasses(Class<?> clazz) {
-        Preconditions.checkNotNull(clazz, "Can't find ancestors of a null.");
-        ArrayList<Class<?>> classes = Lists.newArrayList();
+        TypeHelper.checkNull(clazz, "Can't find ancestors of a null.");
+        
+        List<Class<?>> classes = CollectionHelper.emptyList();
         Class<?> tempClass = clazz;
         while (tempClass != null) {
             classes.add(tempClass);
@@ -242,7 +239,7 @@ public class ReflectionHelper {
      * @param clazz can be null.
      * @return false if input is null or class doesn't have annotation. Otherwise, return true.
      */
-    public static boolean hasAnnotation(@Nullable Class<? extends Annotation> annotationClass, @Nullable Class<?> clazz) {
+    public static boolean hasAnnotation(Class<? extends Annotation> annotationClass, Class<?> clazz) {
         if (Objects.isNull(annotationClass) || Objects.isNull(clazz)) {
             return false;
         }
@@ -256,7 +253,7 @@ public class ReflectionHelper {
      * @param field can be null.
      * @return false if any input is null or field not contains annotation. Otherwise, return true.
      */
-    public static boolean hasAnnotation(@Nullable final Class<? extends Annotation> annotationClass, @Nullable final Field field) {
+    public static boolean hasAnnotation(final Class<? extends Annotation> annotationClass, final Field field) {
         if (annotationClass == null || field == null) {
             return false;
         }
@@ -271,7 +268,7 @@ public class ReflectionHelper {
      * @param packageName can be null.
      * @return false if input is null or if annotation is not in the package. Otherwise, return true.
      */
-    public static boolean isOfPackage(@Nullable Annotation annotation, @Nullable String packageName) {
+    public static boolean isOfPackage(Annotation annotation, String packageName) {
         if (Objects.isNull(annotation) || Objects.isNull(packageName)){
             return false;
         }
@@ -289,7 +286,7 @@ public class ReflectionHelper {
      * - Object or field name is null<br/>
      * - Field not found.
      */
-    public static boolean setFieldValue(@Nullable Object object, @Nullable String fieldName, @Nullable Object fieldValue) {
+    public static boolean setFieldValue(Object object, String fieldName, Object fieldValue) {
         if (Objects.isNull(object) || Objects.isNull(fieldName)) {
             return false;
         }
@@ -321,11 +318,11 @@ public class ReflectionHelper {
      * @param clazz Class that you want to find methods.
      * @return Empty list if input is null. Otherwise, return list of public methods
      */
-    public @NotNull static List<Method> getPublicMethodsOf(@Nullable final Class<?> clazz) {
+    public static List<Method> getPublicMethodsOf(final Class<?> clazz) {
         if (clazz == null) {
-            return Lists.newArrayList();
+            return CollectionHelper.emptyList();
         }
-        return Lists.newArrayList(clazz.getDeclaredMethods()).stream()
+        return CollectionHelper.listOf(clazz.getDeclaredMethods()).stream()
             .filter(method -> Modifier.isPublic(method.getModifiers()))
             .collect(Collectors.toList());
     }
@@ -335,7 +332,7 @@ public class ReflectionHelper {
      * @param clazz can be null. NOTE: This class must contains only one generic type.
      * @return Optional of generic type. Return empty if any exception caught.
      */
-    public static Optional<Class<?>> genericTypeOf(@Nullable Class<?> clazz) {
+    public static Optional<Class<?>> genericTypeOf(Class<?> clazz) {
         return genericTypeOf(Objects.requireNonNull(clazz).getGenericSuperclass());
     }
     
@@ -344,7 +341,7 @@ public class ReflectionHelper {
      * @param type can be null.
      * @return Optional of generic type. Return empty if any exception caught.
      */
-    public static Optional<Class<?>> genericTypeOf(@Nullable Type type) {
+    public static Optional<Class<?>> genericTypeOf(Type type) {
         try {
             Type genericType = Objects.requireNonNull((ParameterizedType) type).getActualTypeArguments()[0];
             return Optional.of((Class<?>) genericType);
@@ -354,17 +351,28 @@ public class ReflectionHelper {
         }
     }
     
-    
-    
     /**
      * Check whether a field is collection or not.
      * @param field can be null.
      * @return false if input is null or field is not collection. Otherwise, return true.
      */
-    public static boolean isCollection(@Nullable final Field field) {
+    public static boolean isCollection(final Field field) {
         if (field == null) {
             return false;
         }
         return Collection.class.isAssignableFrom(field.getType());
+    }
+    
+    /**
+     * Check whether a field is primitive type or wrapper or not.
+     * @param field can be null.
+     * @return false if input is null or field is not primitive or wrapper. Otherwise, return true.
+     */
+    public static boolean isPrimitive(final Field field) {
+        if (field == null) {
+            return false;
+        }
+        Class<?> type = field.getType();
+        return type.isPrimitive() || wrapperClasses.contains(field.getType());
     }
 }
