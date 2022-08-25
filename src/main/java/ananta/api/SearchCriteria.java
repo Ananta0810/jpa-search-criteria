@@ -3,6 +3,7 @@ package ananta.api;
 import ananta.api.helpers.CollectionHelper;
 import ananta.api.helpers.CriteriaHelper;
 import ananta.api.helpers.ReflectionHelper;
+import ananta.api.helpers.StringHelper;
 import ananta.api.models.*;
 import ananta.api.statics.ForAll;
 import ananta.api.statics.ForCollection;
@@ -14,8 +15,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.logging.log4j.util.Strings;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -224,7 +223,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public SearchCriteria<T, ROOT> where(String key, ForString action, String value) {
         checkKeyAndAction(key, action);
         
-        if (Strings.isNotBlank(value)) {
+        if (StringHelper.isNotBlank(value)) {
             WhereClause clause = WhereClauseForString.builder()
                 .table(TableJoin.of(key))
                 .action(action)
@@ -253,7 +252,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public SearchCriteria<T, ROOT> where(String key, ForCollection action, Collection<? extends Serializable> value) {
         checkKeyAndAction(key, action);
         
-        if (CollectionUtils.isNotEmpty(value)) {
+        if (CollectionHelper.isNotEmpty(value)) {
             WhereClause clause = WhereClauseForCollection.builder()
                 .table(TableJoin.of(key))
                 .action(action)
@@ -307,7 +306,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public SearchCriteria<T, ROOT> or(final String key, final ForString action, final String value) {
         checkKeyAndAction(key, action);
         
-        if (Strings.isNotBlank(value)) {
+        if (StringHelper.isNotBlank(value)) {
             WhereClause clause = WhereClauseForString.builder()
                 .table(TableJoin.of(key))
                 .action(action)

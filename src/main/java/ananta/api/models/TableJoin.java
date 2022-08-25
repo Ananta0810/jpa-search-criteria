@@ -5,7 +5,6 @@ import com.google.common.base.Preconditions;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import org.apache.logging.log4j.util.Strings;
 
 @AllArgsConstructor
 @Builder
@@ -27,6 +26,6 @@ public class TableJoin {
     }
     
     public String getNameOrElse(String otherName) {
-        return Strings.isBlank(name) ? otherName : name;
+        return StringHelper.isBlank(name) ? otherName : name;
     }
 }

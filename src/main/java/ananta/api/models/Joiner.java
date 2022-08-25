@@ -37,7 +37,7 @@ public class Joiner {
     public From<?, ?>  getJoin(String tableName) {
         return Optional
             .ofNullable(joinMap.get(tableName))
-            .orElseThrow(() -> new QueryException("Can't find table {}", tableName));
+            .orElseThrow(() -> new QueryException("Can't find table %s", tableName));
     }
     
     
@@ -84,6 +84,6 @@ public class Joiner {
                 return false;
             })
             .findFirst()
-            .orElseThrow(() -> new QueryException("Can't find the field to join between {} and {}.", lastClass.getSimpleName(), newTableClass.getSimpleName()));
+            .orElseThrow(() -> new QueryException("Can't find the field to join between %s and %s.", lastClass.getSimpleName(), newTableClass.getSimpleName()));
     }
 }

@@ -2,8 +2,8 @@ package ananta.api.helpers;
 
 import ananta.api.models.QueryException;
 import lombok.experimental.UtilityClass;
-import org.apache.commons.lang3.ClassUtils;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.util.ClassUtils;
 
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
@@ -27,7 +27,7 @@ public class CriteriaHelper {
             .getAnnotation(Table.class, clazz)
             .map(Table::name)
             .orElseThrow(
-                () -> new QueryException("Your class {} must annotated with @Table annotation.", clazz.getSimpleName())
+                () -> new QueryException("Your class %s must annotated with @Table annotation.", clazz.getSimpleName())
             );
     }
     
@@ -46,7 +46,6 @@ public class CriteriaHelper {
     }
     
     public static boolean isMappingColumn(@NotNull final Field field) {
-        Class<?> type = field.getType();
         Predicate<Annotation> isMappingAnnotation = ann -> RELATIONSHIP_ANNOTATIONS.contains(ann.annotationType());
         ArrayList<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
         return annotations.stream().anyMatch(isMappingAnnotation);
@@ -58,7 +57,7 @@ public class CriteriaHelper {
             return field.getType();
         }
         Type genericType = field.getGenericType();
-        return ReflectionHelper.genericTypeOf(genericType).orElseThrow(() -> new QueryException("Can't find entity of field {} in {}", field.getName()));
+        return ReflectionHelper.genericTypeOf(genericType).orElseThrow(() -> new QueryException("Can't find entity of field %s in %s", field.getName()));
     }
     
     
