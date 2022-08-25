@@ -1,5 +1,6 @@
 package ananta.api.models;
 
+import ananta.api.helpers.CollectionHelper;
 import ananta.api.helpers.ReflectionHelper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -12,6 +13,7 @@ import javax.persistence.criteria.Root;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class Joiner {
@@ -34,8 +36,13 @@ public class Joiner {
     
     public From<?, ?>  getJoin(String tableName) {
         return Optional
-            .ofNullable(joinMap.get(tableName.toLowerCase()))
+            .ofNullable(joinMap.get(tableName))
             .orElseThrow(() -> new QueryException("Can't find table {}", tableName));
+    }
+    
+    
+    public JoinPoint getLast() {
+        return joinPoints.isEmpty() ? rootJoin : CollectionHelper.getLastElementOf(joinPoints);
     }
     
     public void initJoinMap(CriteriaQuery<?> query) {
@@ -49,8 +56,13 @@ public class Joiner {
         joinMap.put(this.rootJoin.getTableName(), root);
         
         for (JoinPoint joinPoint : joinPoints) {
-            Field joinField = getJoinField(lastClass, joinPoint.getClazz());
-            Join<?, ?> newJoin = lastJoin.join(joinField.getName());
+            Class<?> finalLastClass = lastClass;
+            
+            String fieldName = Optional.ofNullable(joinPoint.getField())
+                .map(Field::getName)
+                .orElseGet(() -> getJoinField(finalLastClass, joinPoint.getClazz()).getName());
+            
+            Join<?, ?> newJoin = lastJoin.join(fieldName);
             joinMap.put(joinPoint.getTableName(), newJoin);
             
             lastJoin = newJoin;
@@ -63,7 +75,7 @@ public class Joiner {
         List<Field> fields = ReflectionHelper.getFieldsOf(lastClass);
         return fields.stream()
             .filter(field -> {
-                if (field.getType().isAssignableFrom(newTableClass)) {
+                if (Objects.equals(field.getType(), newTableClass)) {
                     return true;
                 }
                 if (ReflectionHelper.isCollection(field)) {

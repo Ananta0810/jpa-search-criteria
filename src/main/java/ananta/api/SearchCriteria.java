@@ -24,6 +24,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
 import javax.persistence.EntityManager;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
@@ -36,6 +39,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -123,7 +127,6 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     private Class<?> getTableClass(final String tableName) {
-        //        Preconditions.checkNotNull(rootClass, "No entity found.");
         return entities.get(tableName);
     }
     
@@ -145,13 +148,56 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public SearchCriteria<T, ROOT> join(String tableName) {
-        Class<?> tableClass = getTableClass(tableName);
-        return join(tableClass, tableName);
+        Class<?> entity = getTableClass(tableName);
+        if (entity != null) {
+            return join(entity, tableName);
+        }
+    
+        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table not found."));
+        JoinPoint joinPoint = JoinPoint.builder().tableName(tableName).field(field).build();
+        joiner.add(joinPoint);
+    
+        return this;
     }
+    
     @Override
     public SearchCriteria<T, ROOT> join(String tableName, String as) {
-        Class<?> tableClass = getTableClass(tableName);
-        return join(tableClass, as);
+        Class<?> entity = getTableClass(tableName);
+        if (entity != null) {
+            return join(entity, as);
+        }
+    
+        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table not found."));
+        JoinPoint joinPoint = JoinPoint.builder().tableName(as).field(field).build();
+        joiner.add(joinPoint);
+    
+        return this;
+    }
+    
+    @NotNull
+    private Optional<Field> getFieldWithJoinTable(final String tableName) {
+        Class<?> lastClazz = joiner.getLast().getClazz();
+        return ReflectionHelper
+            .getNonStaticFieldsOf(lastClazz).stream()
+            .filter(field -> {
+                if (Objects.equals(field.getName(), tableName)) {
+                    return true;
+                }
+                Optional<JoinTable> joinTableAnnotation = ReflectionHelper.getAnnotation(JoinTable.class, field);
+                Optional<JoinColumn> joinColumnAnnotation = ReflectionHelper.getAnnotation(JoinColumn.class, field);
+                Optional<ManyToMany> manyToManyAnnotation = ReflectionHelper.getAnnotation(ManyToMany.class, field);
+                if (joinTableAnnotation.isPresent()) {
+                    return Objects.equals(joinTableAnnotation.get().name(), tableName);
+                }
+                if (joinColumnAnnotation.isPresent()) {
+                    return Objects.equals(joinColumnAnnotation.get().name(), tableName);
+                }
+                if (manyToManyAnnotation.isPresent()) {
+                    return Objects.equals(manyToManyAnnotation.get().mappedBy(), tableName);
+                }
+                return false;
+            })
+            .findFirst();
     }
     
     @Override

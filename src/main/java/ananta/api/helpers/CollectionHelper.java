@@ -1,6 +1,7 @@
 package ananta.api.helpers;
 
 import lombok.experimental.UtilityClass;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -15,5 +16,12 @@ public class CollectionHelper {
     
     public static <K, V> Map<K, V> mapOf(final List<V> existingInventories, final Function<V, K> valueProvider) {
         return existingInventories.stream().collect(Collectors.toMap(valueProvider, item -> item, (origin, duplicated) -> origin));
+    }
+    
+    public static <T> T getLastElementOf(List<T> list) {
+        if (CollectionUtils.isEmpty(list)) {
+            return null;
+        }
+        return list.get(list.size() - 1);
     }
 }
