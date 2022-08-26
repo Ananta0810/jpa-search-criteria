@@ -9,23 +9,6 @@ public class TableJoin {
     
     private static final String SEPARATOR = ".";
     
-    private TableJoin(final Builder builder) {
-        name = builder.name;
-        column = builder.column;
-    }
-    
-    public static Builder builder() {
-        return new Builder();
-    }
-    
-    public String getName() {
-        return name;
-    }
-    
-    public String getColumn() {
-        return column;
-    }
-    
     public static TableJoin of(String key) {
         TypeHelper.checkNull(key, "Key must not be null.");
         if (!key.contains(SEPARATOR)) {
@@ -34,6 +17,28 @@ public class TableJoin {
         String table = StringHelper.beforeOf(SEPARATOR, key);
         String column = StringHelper.afterOf(SEPARATOR, key);
         return TableJoin.builder().name(table).column(column).build();
+    }
+    
+    private TableJoin(final Builder builder) {
+        name = builder.name;
+        column = builder.column;
+    }
+    
+    public TableJoin withColumn(String column) {
+        TypeHelper.checkNull(column, "Column must not be null");
+        return TableJoin.builder().name(this.name).column(column).build();
+    }
+    
+    public String getName() {
+        return name;
+    }
+    
+    public static Builder builder() {
+        return new Builder();
+    }
+    
+    public String getColumn() {
+        return column;
     }
     
     public String getNameOrElse(String otherName) {

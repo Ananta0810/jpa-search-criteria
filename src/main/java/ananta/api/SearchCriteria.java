@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 
+import javax.persistence.Column;
 import javax.persistence.EntityManager;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
@@ -194,9 +195,9 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     @Override
     public SearchCriteria<T, ROOT> where(String key, ForAll action, Object value) {
         checkKeyAndAction(key, action);
-        TableJoin table = TableJoin.of(key);
         
         if (value != null) {
+            TableJoin table = getTableJoinOf(key);
             WhereClause clause = WhereClauseForAll.builder()
                 .table(table)
                 .action(action)
@@ -205,6 +206,35 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
         }
         return this;
+    }
+    
+    private TableJoin getTableJoinOf(final String key) {
+        TableJoin table = TableJoin.of(key);
+        
+        JoinPoint joinPoint = joiner
+            .getJoinPoint(table.getName())
+            .orElseThrow(() -> new QueryException("Can't find table %s", table.getName()));
+    
+        Class<?> clazz = joinPoint.getType().orElseThrow(() -> new NullPointerException("Join point have no class inside."));
+    
+        String fieldName = getJoinField(clazz, table.getColumn())
+            .map(Field::getName)
+            .orElseThrow(() -> new QueryException("Can't find column %s in %s", table.getColumn(), joinPoint.getTableName()));
+        
+        return table.withColumn(fieldName);
+    }
+    
+    private Optional<Field> getJoinField(final Class<?> clazz, final String column) {
+        return ReflectionHelper
+            .getNonStaticFieldsOf(clazz).stream()
+            .filter(field -> {
+                if (Objects.equals(field.getName(), column)) {
+                    return true;
+                }
+                return ReflectionHelper.getAnnotation(Column.class, field)
+                    .map(col -> Objects.equals(col.name(), column))
+                    .orElse(false);
+            }).findFirst();
     }
     
     private String getTableNameFrom(final TableJoin table) {
@@ -217,7 +247,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (StringHelper.isNotBlank(value)) {
             WhereClause clause = WhereClauseForString.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -231,7 +261,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         checkKeyAndAction(key, action);
         if (value != null) {
             WhereClause clause = WhereClauseForNumber.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -246,7 +276,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (CollectionHelper.isNotEmpty(value)) {
             WhereClause clause = WhereClauseForCollection.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -285,7 +315,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (value != null) {
             WhereClause clause = WhereClauseForAll.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -300,7 +330,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (StringHelper.isNotBlank(value)) {
             WhereClause clause = WhereClauseForString.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -316,7 +346,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (value != null) {
             WhereClause clause = WhereClauseForNumber.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
@@ -331,7 +361,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         
         if (value != null) {
             WhereClause clause = WhereClauseForCollection.builder()
-                .table(TableJoin.of(key))
+                .table(getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();

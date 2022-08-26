@@ -1,6 +1,9 @@
 package ananta.api.models;
 
+import ananta.api.helpers.ReflectionHelper;
+
 import java.lang.reflect.Field;
+import java.util.Optional;
 
 public class JoinPoint {
     private final String tableName;
@@ -23,6 +26,13 @@ public class JoinPoint {
     
     public Class<?> getClazz() {
         return clazz;
+    }
+    
+    public Optional<Class<?>> getType() {
+        if (field == null) {
+            return Optional.ofNullable(clazz);
+        }
+        return ReflectionHelper.getTypeOf(field);
     }
     
     public Field getField() {

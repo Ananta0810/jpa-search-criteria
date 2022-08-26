@@ -19,7 +19,6 @@ public class ReflectionHelper {
     
     private ReflectionHelper() {}
     
-    
     private static final Set<Class<?>> wrapperClasses = CollectionHelper.setOf(Boolean.class, Byte.class, Character.class, Double.class, Float.class, Integer.class, Long.class, Short.class, Void.class);
     
     /**
@@ -374,5 +373,21 @@ public class ReflectionHelper {
         }
         Class<?> type = field.getType();
         return type.isPrimitive() || wrapperClasses.contains(field.getType());
+    }
+    
+    /**
+     * Get the type of the field. If field is collection, try to get the generic type.
+     * @param field can be null.
+     * @return empty if field is null. If field is collection, return generic of type.
+     * Otherwise, return field's type.
+     */
+    public static Optional<Class<?>> getTypeOf(final Field field) {
+        if (field == null) {
+            return Optional.empty();
+        }
+        if (isCollection(field)) {
+            return genericTypeOf(field.getGenericType());
+        }
+        return Optional.of(field.getType());
     }
 }
