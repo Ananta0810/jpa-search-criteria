@@ -1,9 +1,9 @@
 package ananta.api.helpers;
 
-import lombok.experimental.UtilityClass;
-
-@UtilityClass
 public class StringHelper {
+    
+    private StringHelper() {}
+    
     private final static String EMPTY = "";
     
     public static String afterOf(final String word, final String origin) {

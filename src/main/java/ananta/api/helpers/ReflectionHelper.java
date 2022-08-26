@@ -1,7 +1,5 @@
 package ananta.api.helpers;
 
-import lombok.experimental.UtilityClass;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -17,8 +15,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-@UtilityClass
 public class ReflectionHelper {
+    
+    private ReflectionHelper() {}
+    
     
     private static final Set<Class<?>> wrapperClasses = CollectionHelper.setOf(Boolean.class, Byte.class, Character.class, Double.class, Float.class, Integer.class, Long.class, Short.class, Void.class);
     

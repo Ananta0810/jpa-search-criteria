@@ -1,7 +1,6 @@
 package ananta.api.helpers;
 
 import ananta.api.models.QueryException;
-import lombok.experimental.UtilityClass;
 
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToMany;
@@ -16,8 +15,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
-@UtilityClass
 public class CriteriaHelper {
+    
+    private CriteriaHelper() {}
+    
     private static final Set<Class<? extends Annotation>> RELATIONSHIP_ANNOTATIONS = Set.of(ManyToMany.class, ManyToOne.class, OneToMany.class, OneToOne.class, JoinColumn.class);
     
     public static String getTableNameOf(final Class<?> clazz) {

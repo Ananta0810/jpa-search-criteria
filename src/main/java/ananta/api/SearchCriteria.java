@@ -143,29 +143,24 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public SearchCriteria<T, ROOT> join(String tableName) {
-        Class<?> entity = getTableClass(tableName);
-        if (entity != null) {
-            return join(entity, tableName);
-        }
-    
-        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table not found."));
-        JoinPoint joinPoint = JoinPoint.builder().tableName(tableName).field(field).build();
-        joiner.add(joinPoint);
-    
-        return this;
+        return joinUsingTableName(tableName, tableName);
     }
     
     @Override
     public SearchCriteria<T, ROOT> join(String tableName, String as) {
+        return joinUsingTableName(tableName, as);
+    }
+    
+    private SearchCriteria<T, ROOT> joinUsingTableName(final String tableName, final String as) {
         Class<?> entity = getTableClass(tableName);
         if (entity != null) {
             return join(entity, as);
         }
-    
+        
         Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table not found."));
         JoinPoint joinPoint = JoinPoint.builder().tableName(as).field(field).build();
         joiner.add(joinPoint);
-    
+        
         return this;
     }
     
@@ -178,14 +173,16 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
                     return true;
                 }
                 Optional<JoinTable> joinTableAnnotation = ReflectionHelper.getAnnotation(JoinTable.class, field);
-                Optional<JoinColumn> joinColumnAnnotation = ReflectionHelper.getAnnotation(JoinColumn.class, field);
-                Optional<ManyToMany> manyToManyAnnotation = ReflectionHelper.getAnnotation(ManyToMany.class, field);
                 if (joinTableAnnotation.isPresent()) {
                     return Objects.equals(joinTableAnnotation.get().name(), tableName);
                 }
+                
+                Optional<JoinColumn> joinColumnAnnotation = ReflectionHelper.getAnnotation(JoinColumn.class, field);
                 if (joinColumnAnnotation.isPresent()) {
                     return Objects.equals(joinColumnAnnotation.get().name(), tableName);
                 }
+                
+                Optional<ManyToMany> manyToManyAnnotation = ReflectionHelper.getAnnotation(ManyToMany.class, field);
                 if (manyToManyAnnotation.isPresent()) {
                     return Objects.equals(manyToManyAnnotation.get().mappedBy(), tableName);
                 }

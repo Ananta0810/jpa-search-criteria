@@ -1,7 +1,5 @@
 package ananta.api.helpers;
 
-import lombok.experimental.UtilityClass;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -13,8 +11,10 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@UtilityClass
 public class CollectionHelper {
+    
+    private CollectionHelper() {}
+    
     public static <E, KEY, VALUE> Map<KEY, VALUE> mapOf(final Collection<E> items, final Function<E, KEY> keyProvider, final Function<E, VALUE> valueProvider) {
         return items.stream().collect(Collectors.toMap(keyProvider, valueProvider, (origin, duplicated) -> origin));
     }
