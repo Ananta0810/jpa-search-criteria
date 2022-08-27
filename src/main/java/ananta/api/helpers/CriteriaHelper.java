@@ -44,6 +44,9 @@ public class CriteriaHelper {
     }
     
     public static boolean isMappingColumn(final Field field) {
+        if (ReflectionHelper.isPrimitive(field) || field.getType().equals(String.class)) {
+            return false;
+        }
         Predicate<Annotation> isMappingAnnotation = ann -> RELATIONSHIP_ANNOTATIONS.contains(ann.annotationType());
         List<Annotation> annotations = ReflectionHelper.getAnnotationsOf(field);
         return annotations.stream().anyMatch(isMappingAnnotation);
@@ -62,6 +65,6 @@ public class CriteriaHelper {
         return ReflectionHelper
             .getAnnotation(Table.class, entity)
             .map(Table::name)
-            .orElseThrow(() -> new QueryException("There is entity that does not have @Table annotation."));
+            .orElseThrow(() -> new QueryException("Entity %s that does not have @Table annotation.", entity.getSimpleName()));
     }
 }

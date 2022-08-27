@@ -55,7 +55,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public static void init(EntityManager entityManager) {
         TypeHelper.checkNull(entityManager, "Entity manager should not be null.");
     
-        List<Class<?>> entityClasses = entityManager.getMetamodel()
+        Set<Class<?>> entityClasses = entityManager.getMetamodel()
             .getEntities()
             .stream()
             .map(entity -> {
@@ -65,7 +65,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
                 return classes;
             })
             .flatMap(Collection::stream)
-            .collect(Collectors.toList());
+            .collect(Collectors.toSet());
     
         em = entityManager;
         entities = CollectionHelper.mapOf(entityClasses, CriteriaHelper::tableNameOf);
@@ -158,7 +158,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             return join(entity, as);
         }
         
-        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table not found."));
+        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table %s not found.", tableName));
         JoinPoint joinPoint = JoinPoint.builder().tableName(as).field(field).build();
         joiner.add(joinPoint);
         
@@ -293,7 +293,6 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public SearchCriteria<T, ROOT> and(String key, ForAll action, Object value) {
-        // TODO: Fix timePattern not found. Must use pattern
         return where(key, action, value);
     }
     @Override
@@ -394,14 +393,15 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public List<T> toList() {
         List<String> fields = getSelectFields();
         joiner.initJoinMap(query);
-        
-        query.multiselect(getSelections(fields)).where(getPredicate(cb));
+    
+        query.multiselect(getSelections(fields));
+        getPredicate(cb).ifPresent(query::where);
         
         List<Object[]> tuple = em.createQuery(query).getResultList();
         return tuple.stream().map(objectValues -> getObjectFrom(fields, objectValues)).collect(Collectors.toList());
     }
     
-    private Predicate getPredicate(final CriteriaBuilder cb) {
+    private Optional<Predicate> getPredicate(final CriteriaBuilder cb) {
         Predicate whereClause = null;
         for (QueryClause predicate : predicates) {
             String tableName = getTableNameFrom(predicate.getClause().getTable());
@@ -418,7 +418,7 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             }
             whereClause = cb.or(whereClause, predicate.getClause().getPredicate(cb, join));
         }
-        return whereClause;
+        return Optional.ofNullable(whereClause);
     }
     
     @Override
@@ -432,9 +432,10 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         }
         List<String> fields = getSelectFields();
         joiner.initJoinMap(query);
-        
-        query.multiselect(getSelections(fields)).where(getPredicate(cb));
-        
+    
+        query.multiselect(getSelections(fields));
+        getPredicate(cb).ifPresent(query::where);
+    
         List<Object[]> tuple = em.createQuery(query)
             .setFirstResult((int) page.getOffset())
             .setMaxResults(page.getPageSize())
@@ -453,7 +454,10 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         CriteriaQuery<Long> countQuery = em.getCriteriaBuilder().createQuery(Long.class);
         joiner.initJoinMap(countQuery);
         Expression<Long> selection = cb.count(cb.literal(1));
-        countQuery.multiselect(selection).where(getPredicate(cb));
+        
+        countQuery.multiselect(selection);
+        getPredicate(cb).ifPresent(query::where);
+
         return em.createQuery(countQuery).getSingleResult();
     }
     
@@ -461,8 +465,10 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     public Optional<T> findFirst() {
         List<String> fields = getSelectFields();
         joiner.initJoinMap(query);
-        
-        query.multiselect(getSelections(fields)).where(getPredicate(cb));
+    
+        query.multiselect(getSelections(fields));
+        getPredicate(cb).ifPresent(query::where);
+
         Object[] value = em.createQuery(query).getSingleResult();
         return Optional.ofNullable(getObjectFrom(fields, value));
     }
