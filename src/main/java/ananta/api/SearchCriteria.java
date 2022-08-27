@@ -10,8 +10,6 @@ import ananta.api.statics.ForAll;
 import ananta.api.statics.ForCollection;
 import ananta.api.statics.ForNumber;
 import ananta.api.statics.ForString;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +21,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.NoResultException;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Expression;
@@ -41,8 +40,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
-    
-    private static final Gson gson = new Gson();
     private static EntityManager em;
     private static Map<String, Class<?>> entities;
     private final CriteriaBuilder cb;
@@ -445,32 +442,50 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             .map(objectValues -> getObjectFrom(fields, objectValues))
             .collect(Collectors.toList());
         
-        Long total = countTotalResultFound();
-        
-        return new PageImpl<>(items, page, total);
-    }
-    
-    private Long countTotalResultFound() {
-        CriteriaQuery<Long> countQuery = em.getCriteriaBuilder().createQuery(Long.class);
-        joiner.initJoinMap(countQuery);
-        Expression<Long> selection = cb.count(cb.literal(1));
-        
-        countQuery.multiselect(selection);
-        getPredicate(cb).ifPresent(query::where);
-
-        return em.createQuery(countQuery).getSingleResult();
+        return new PageImpl<>(items, page, count());
     }
     
     @Override
     public Optional<T> findFirst() {
-        List<String> fields = getSelectFields();
-        joiner.initJoinMap(query);
+        try {
+            List<String> fields = getSelectFields();
+            joiner.initJoinMap(query);
+        
+            query.multiselect(getSelections(fields));
+            getPredicate(cb).ifPresent(query::where);
+        
+            Object[] value = em.createQuery(query).getSingleResult();
+            return Optional.ofNullable(getObjectFrom(fields, value));
+        } catch (NoResultException exception) {
+            return Optional.empty();
+        }
+    }
     
-        query.multiselect(getSelections(fields));
+    @Override
+    public Long count() {
+        CriteriaQuery<Long> countQuery = em.getCriteriaBuilder().createQuery(Long.class);
+        
+        joiner.initJoinMap(countQuery);
+        
+        Expression<Long> selection = cb.count(cb.literal(1));
+        countQuery.multiselect(selection);
+        
         getPredicate(cb).ifPresent(query::where);
-
-        Object[] value = em.createQuery(query).getSingleResult();
-        return Optional.ofNullable(getObjectFrom(fields, value));
+        return em.createQuery(countQuery).getSingleResult();
+    }
+    
+    @Override
+    public boolean existAny() {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        
+        CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        joiner.initJoinMap(query);
+        
+        query.select(this.cb.literal(1L));
+        getPredicate(this.cb).ifPresent(this.query::where);
+        
+        List<Long> result = em.createQuery(query).setMaxResults(1).getResultList();
+        return CollectionHelper.isNotEmpty(result);
     }
     
     private Selection<?>[] getSelections(final List<String> fields) {
@@ -491,11 +506,6 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
             Object value = values[i];
             fieldValueMap.put(field, value);
         }
-        return convertFromMapToObject(fieldValueMap);
-    }
-    
-    private T convertFromMapToObject(final HashMap<String, Object> valueMap) {
-        JsonElement jsonElement = gson.toJsonTree(valueMap);
-        return gson.fromJson(jsonElement, returnType);
+        return TypeHelper.convertFromMapToObject(returnType, fieldValueMap);
     }
 }

@@ -53,11 +53,11 @@ public class CollectionHelper {
         return list.get(list.size() - 1);
     }
     
-    public static boolean isEmpty(Collection<?> items) {
-        return items != null && !items.isEmpty();
+    public static boolean isEmpty(Collection<?> list) {
+        return list == null || list.isEmpty();
     }
     
-    public static boolean isNotEmpty(Collection<?> items) {
-        return !isEmpty(items);
+    public static boolean isNotEmpty(Collection<?> list) {
+        return !isEmpty(list);
     }
 }

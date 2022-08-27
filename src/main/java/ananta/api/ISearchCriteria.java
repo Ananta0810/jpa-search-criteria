@@ -47,4 +47,7 @@ public interface ISearchCriteria<T, ROOT> {
     Set<T> toSet();
     Page<T> toPage();
     Optional<T> findFirst();
+    
+    Long count();
+    boolean existAny();
 }
