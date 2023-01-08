@@ -1,42 +1,19 @@
 package ananta.api;
 
-import ananta.api.helpers.CollectionHelper;
-import ananta.api.helpers.CriteriaHelper;
-import ananta.api.helpers.ReflectionHelper;
-import ananta.api.helpers.StringHelper;
-import ananta.api.helpers.TypeHelper;
+import ananta.api.helpers.*;
 import ananta.api.models.*;
 import ananta.api.statics.ForAll;
 import ananta.api.statics.ForCollection;
 import ananta.api.statics.ForNumber;
 import ananta.api.statics.ForString;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import com.google.gson.Gson;
+import org.springframework.data.domain.*;
 
-import javax.persistence.Column;
-import javax.persistence.EntityManager;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.NoResultException;
-import javax.persistence.criteria.CriteriaBuilder;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Expression;
-import javax.persistence.criteria.From;
-import javax.persistence.criteria.Predicate;
-import javax.persistence.criteria.Selection;
+import javax.persistence.*;
+import javax.persistence.criteria.*;
 import java.io.Serializable;
 import java.lang.reflect.Field;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
@@ -46,18 +23,18 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     private final CriteriaQuery<Object[]> query;
     private final Class<T> returnType;
     private final List<QueryClause> predicates = CollectionHelper.emptyList();
-    private final Joiner joiner = new Joiner();
+    private final ananta.api.models.Joiner joiner = new ananta.api.models.Joiner();
     private Pageable page;
     
-    public static void init(EntityManager entityManager) {
+    public static void init(final EntityManager entityManager) {
         TypeHelper.checkNull(entityManager, "Entity manager should not be null.");
     
-        Set<Class<?>> entityClasses = entityManager.getMetamodel()
+        final Set<Class<?>> entityClasses = entityManager.getMetamodel()
             .getEntities()
             .stream()
             .map(entity -> {
-                List<Field> fields = ReflectionHelper.getNonStaticFieldsOf(entity.getJavaType());
-                List<Class<?>> classes = fields.stream().filter(CriteriaHelper::isMappingColumn).map(CriteriaHelper::getEntityOf).collect(Collectors.toList());
+                final List<Field> fields = ReflectionHelper.getNonStaticFieldsOf(entity.getJavaType());
+                final List<Class<?>> classes = fields.stream().filter(CriteriaHelper::isMappingColumn).map(CriteriaHelper::getEntityOf).collect(Collectors.toList());
                 classes.add(entity.getJavaType());
                 return classes;
             })
@@ -67,56 +44,60 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
         em = entityManager;
         entities = CollectionHelper.mapOf(entityClasses, CriteriaHelper::tableNameOf);
     }
-    
-    private SearchCriteria(Class<T> clazz) {
-        TypeHelper.checkNull(em, "Entity manager have not been initialized. Please call init method.");
-        this.cb = em.getCriteriaBuilder();
-        this.query = cb.createQuery(Object[].class);
-        this.returnType = clazz;
+
+    public static void configGson(final Gson gson) {
+        TypeHelper.checkNull(gson, "gson should not be null.");
+        TypeHelper.configGson(gson);
     }
     
-    
-    public static <T, R> SearchCriteria<T, R> select(Class<T> clazz) {
+    private SearchCriteria(final Class<T> clazz) {
+        TypeHelper.checkNull(em, "Entity manager have not been initialized. Please call init method.");
+        this.cb = em.getCriteriaBuilder();
+        this.query = this.cb.createQuery(Object[].class);
+        this.returnType = clazz;
+    }
+
+    public static <T, R> SearchCriteria<T, R> select(final Class<T> clazz) {
         TypeHelper.checkNull(clazz, "Can't select null class.");
         return new SearchCriteria<>(clazz);
     }
     
     @SuppressWarnings("unchecked")
-    public static <T> SearchCriteria<T, T> selectFrom(Class<T> clazz) {
+    public static <T> SearchCriteria<T, T> selectFrom(final Class<T> clazz) {
         TypeHelper.checkNull(clazz, "Can't select null class.");
         return (SearchCriteria<T, T>) new SearchCriteria<>(clazz).from((Class<Object>) clazz);
     }
     
     @Override
-    public SearchCriteria<T, ROOT> from(Class<ROOT> clazz) {
-        String tableName = CriteriaHelper.getTableNameOf(clazz);
-        JoinPoint joinPoint = JoinPoint.builder().clazz(clazz).tableName(tableName).build();
-        joiner.add(joinPoint);
+    public SearchCriteria<T, ROOT> from(final Class<ROOT> clazz) {
+        final String tableName = CriteriaHelper.getTableNameOf(clazz);
+        final JoinPoint joinPoint = JoinPoint.builder().clazz(clazz).tableName(tableName).build();
+        this.joiner.add(joinPoint);
         return this;
     }
     @Override
-    public SearchCriteria<T, ROOT> from(Class<ROOT> clazz, String as) {
-        JoinPoint joinPoint = JoinPoint.builder().clazz(clazz).tableName(as).build();
-        joiner.add(joinPoint);
+    public SearchCriteria<T, ROOT> from(final Class<ROOT> clazz, final String as) {
+        final JoinPoint joinPoint = JoinPoint.builder().clazz(clazz).tableName(as).build();
+        this.joiner.add(joinPoint);
         
         return this;
     }
     
     @Override
     @SuppressWarnings("unchecked")
-    public SearchCriteria<T, ROOT> from(String tableName) {
+    public SearchCriteria<T, ROOT> from(final String tableName) {
         TypeHelper.checkNull(tableName, "Table name must not be null.");
-        Class<ROOT> rootClass = (Class<ROOT>) getTableClass(tableName);
+        final Class<ROOT> rootClass = (Class<ROOT>) this.getTableClass(tableName);
         
-        return from(rootClass, tableName);
+        return this.from(rootClass, tableName);
     }
     
     @Override
     @SuppressWarnings("unchecked")
-    public SearchCriteria<T, ROOT> from(String tableName, String as) {
+    public SearchCriteria<T, ROOT> from(final String tableName, final String as) {
         TypeHelper.checkNull(tableName, "Table name must not be null.");
-        Class<ROOT> rootClass = (Class<ROOT>) getTableClass(tableName);
-        return from(rootClass, as);
+        final Class<ROOT> rootClass = (Class<ROOT>) this.getTableClass(tableName);
+        return this.from(rootClass, as);
     }
     
     private Class<?> getTableClass(final String tableName) {
@@ -124,63 +105,63 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     @Override
-    public SearchCriteria<T, ROOT> join(Class<?> clazz) {
-        String tableName = CriteriaHelper.getTableNameOf(clazz);
-        JoinPoint joinPoint = JoinPoint.builder().tableName(tableName).clazz(clazz).build();
-        joiner.add(joinPoint);
+    public SearchCriteria<T, ROOT> join(final Class<?> clazz) {
+        final String tableName = CriteriaHelper.getTableNameOf(clazz);
+        final JoinPoint joinPoint = JoinPoint.builder().tableName(tableName).clazz(clazz).build();
+        this.joiner.add(joinPoint);
         
         return this;
     }
     
     @Override
-    public SearchCriteria<T, ROOT> join(Class<?> clazz, String as) {
-        JoinPoint joinPoint = JoinPoint.builder().tableName(as).clazz(clazz).build();
-        joiner.add(joinPoint);
+    public SearchCriteria<T, ROOT> join(final Class<?> clazz, final String as) {
+        final JoinPoint joinPoint = JoinPoint.builder().tableName(as).clazz(clazz).build();
+        this.joiner.add(joinPoint);
         return this;
     }
     
     @Override
-    public SearchCriteria<T, ROOT> join(String tableName) {
-        return joinUsingTableName(tableName, tableName);
+    public SearchCriteria<T, ROOT> join(final String tableName) {
+        return this.joinUsingTableName(tableName, tableName);
     }
     
     @Override
-    public SearchCriteria<T, ROOT> join(String tableName, String as) {
-        return joinUsingTableName(tableName, as);
+    public SearchCriteria<T, ROOT> join(final String tableName, final String as) {
+        return this.joinUsingTableName(tableName, as);
     }
     
     private SearchCriteria<T, ROOT> joinUsingTableName(final String tableName, final String as) {
-        Class<?> entity = getTableClass(tableName);
+        final Class<?> entity = this.getTableClass(tableName);
         if (entity != null) {
-            return join(entity, as);
+            return this.join(entity, as);
         }
         
-        Field field = getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table %s not found.", tableName));
-        JoinPoint joinPoint = JoinPoint.builder().tableName(as).field(field).build();
-        joiner.add(joinPoint);
+        final Field field = this.getFieldWithJoinTable(tableName).orElseThrow(() -> new QueryException("Table %s not found.", tableName));
+        final JoinPoint joinPoint = JoinPoint.builder().tableName(as).field(field).build();
+        this.joiner.add(joinPoint);
         
         return this;
     }
     
     private Optional<Field> getFieldWithJoinTable(final String tableName) {
-        Class<?> lastClazz = joiner.getLast().getClazz();
+        final Class<?> lastClazz = this.joiner.getLast().getClazz();
         return ReflectionHelper
             .getNonStaticFieldsOf(lastClazz).stream()
             .filter(field -> {
                 if (Objects.equals(field.getName(), tableName)) {
                     return true;
                 }
-                Optional<JoinTable> joinTableAnnotation = ReflectionHelper.getAnnotation(JoinTable.class, field);
+                final Optional<JoinTable> joinTableAnnotation = ReflectionHelper.getAnnotation(JoinTable.class, field);
                 if (joinTableAnnotation.isPresent()) {
                     return Objects.equals(joinTableAnnotation.get().name(), tableName);
                 }
                 
-                Optional<JoinColumn> joinColumnAnnotation = ReflectionHelper.getAnnotation(JoinColumn.class, field);
+                final Optional<JoinColumn> joinColumnAnnotation = ReflectionHelper.getAnnotation(JoinColumn.class, field);
                 if (joinColumnAnnotation.isPresent()) {
                     return Objects.equals(joinColumnAnnotation.get().name(), tableName);
                 }
                 
-                Optional<ManyToMany> manyToManyAnnotation = ReflectionHelper.getAnnotation(ManyToMany.class, field);
+                final Optional<ManyToMany> manyToManyAnnotation = ReflectionHelper.getAnnotation(ManyToMany.class, field);
                 if (manyToManyAnnotation.isPresent()) {
                     return Objects.equals(manyToManyAnnotation.get().mappedBy(), tableName);
                 }
@@ -190,31 +171,31 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     @Override
-    public SearchCriteria<T, ROOT> where(String key, ForAll action, Object value) {
-        checkKeyAndAction(key, action);
+    public SearchCriteria<T, ROOT> where(final String key, final ForAll action, final Object value) {
+        this.checkKeyAndAction(key, action);
         
         if (value != null) {
-            TableJoin table = getTableJoinOf(key);
-            WhereClause clause = WhereClauseForAll.builder()
+            final TableJoin table = this.getTableJoinOf(key);
+            final WhereClause clause = WhereClauseForAll.builder()
                 .table(table)
                 .action(action)
                 .value(value)
                 .build();
-            predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
+            this.predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
         }
         return this;
     }
     
     private TableJoin getTableJoinOf(final String key) {
-        TableJoin table = TableJoin.of(key);
+        final TableJoin table = TableJoin.of(key);
         
-        JoinPoint joinPoint = joiner
+        final JoinPoint joinPoint = this.joiner
             .getJoinPoint(table.getName())
             .orElseThrow(() -> new QueryException("Can't find table %s", table.getName()));
     
-        Class<?> clazz = joinPoint.getType().orElseThrow(() -> new NullPointerException("Join point have no class inside."));
+        final Class<?> clazz = joinPoint.getType().orElseThrow(() -> new NullPointerException("Join point have no class inside."));
     
-        String fieldName = getJoinField(clazz, table.getColumn())
+        final String fieldName = this.getJoinField(clazz, table.getColumn())
             .map(Field::getName)
             .orElseThrow(() -> new QueryException("Can't find column %s in %s", table.getColumn(), joinPoint.getTableName()));
         
@@ -235,50 +216,50 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     private String getTableNameFrom(final TableJoin table) {
-        return table.getNameOrElse(joiner.getRootJoin().getTableName());
+        return table.getNameOrElse(this.joiner.getRootJoin().getTableName());
     }
     
     @Override
-    public SearchCriteria<T, ROOT> where(String key, ForString action, String value) {
-        checkKeyAndAction(key, action);
+    public SearchCriteria<T, ROOT> where(final String key, final ForString action, final String value) {
+        this.checkKeyAndAction(key, action);
         
         if (StringHelper.isNotBlank(value)) {
-            WhereClause clause = WhereClauseForString.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForString.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
+            this.predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
             
         }
         return this;
     }
     @Override
-    public <NUMBER extends Comparable<? super NUMBER>> SearchCriteria<T, ROOT> where(String key, ForNumber action, NUMBER value) {
-        checkKeyAndAction(key, action);
+    public <NUMBER extends Comparable<? super NUMBER>> SearchCriteria<T, ROOT> where(final String key, final ForNumber action, final NUMBER value) {
+        this.checkKeyAndAction(key, action);
         if (value != null) {
-            WhereClause clause = WhereClauseForNumber.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForNumber.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            
-            predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
+
+            this.predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
         }
         return this;
     }
     @Override
-    public SearchCriteria<T, ROOT> where(String key, ForCollection action, Collection<? extends Serializable> value) {
-        checkKeyAndAction(key, action);
+    public SearchCriteria<T, ROOT> where(final String key, final ForCollection action, final Collection<? extends Serializable> value) {
+        this.checkKeyAndAction(key, action);
         
         if (CollectionHelper.isNotEmpty(value)) {
-            WhereClause clause = WhereClauseForCollection.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForCollection.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            
-            predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
+
+            this.predicates.add(QueryClause.builder().isAndClause(true).clause(clause).build());
         }
         return this;
     }
@@ -289,94 +270,94 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     }
     
     @Override
-    public SearchCriteria<T, ROOT> and(String key, ForAll action, Object value) {
-        return where(key, action, value);
+    public SearchCriteria<T, ROOT> and(final String key, final ForAll action, final Object value) {
+        return this.where(key, action, value);
     }
     @Override
-    public SearchCriteria<T, ROOT> and(String key, ForString action, String value) {
-        return where(key, action, value);
+    public SearchCriteria<T, ROOT> and(final String key, final ForString action, final String value) {
+        return this.where(key, action, value);
     }
     @Override
-    public <NUMBER extends Comparable<? super NUMBER>> SearchCriteria<T, ROOT> and(String key, ForNumber action, NUMBER value) {
-        return where(key, action, value);
+    public <NUMBER extends Comparable<? super NUMBER>> SearchCriteria<T, ROOT> and(final String key, final ForNumber action, final NUMBER value) {
+        return this.where(key, action, value);
     }
     @Override
-    public SearchCriteria<T, ROOT> and(String key, ForCollection action, Collection<? extends Serializable> value) {
-        return where(key, action, value);
+    public SearchCriteria<T, ROOT> and(final String key, final ForCollection action, final Collection<? extends Serializable> value) {
+        return this.where(key, action, value);
     }
     
     @Override
     public SearchCriteria<T, ROOT> or(final String key, final ForAll action, final Object value) {
-        checkKeyAndAction(key, action);
+        this.checkKeyAndAction(key, action);
         
         if (value != null) {
-            WhereClause clause = WhereClauseForAll.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForAll.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
+            this.predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
         }
         return this;
     }
     
     @Override
     public SearchCriteria<T, ROOT> or(final String key, final ForString action, final String value) {
-        checkKeyAndAction(key, action);
+        this.checkKeyAndAction(key, action);
         
         if (StringHelper.isNotBlank(value)) {
-            WhereClause clause = WhereClauseForString.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForString.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            
-            predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
+
+            this.predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
         }
         return this;
     }
     
     @Override
     public <NUMBER extends Comparable<? super NUMBER>> SearchCriteria<T, ROOT> or(final String key, final ForNumber action, final NUMBER value) {
-        checkKeyAndAction(key, action);
+        this.checkKeyAndAction(key, action);
         
         if (value != null) {
-            WhereClause clause = WhereClauseForNumber.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForNumber.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
+            this.predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
         }
         return this;
     }
     
     @Override
     public SearchCriteria<T, ROOT> or(final String key, final ForCollection action, final Collection<? extends Serializable> value) {
-        checkKeyAndAction(key, action);
+        this.checkKeyAndAction(key, action);
         
         if (value != null) {
-            WhereClause clause = WhereClauseForCollection.builder()
-                .table(getTableJoinOf(key))
+            final WhereClause clause = WhereClauseForCollection.builder()
+                .table(this.getTableJoinOf(key))
                 .action(action)
                 .value(value)
                 .build();
-            predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
+            this.predicates.add(QueryClause.builder().isAndClause(false).clause(clause).build());
         }
         return this;
     }
     
     @Override
-    public SearchCriteria<T, ROOT> withPage(Pageable page) {
+    public SearchCriteria<T, ROOT> withPage(final Pageable page) {
         this.page = page;
         return this;
     }
     
     @Override
-    public SearchCriteria<T, ROOT> withPage(int pageNumber, int size, String orderBy, boolean isAscending) {
+    public SearchCriteria<T, ROOT> withPage(final int pageNumber, final int size, final String orderBy, final boolean isAscending) {
         TypeHelper.checkNull(orderBy, "Order by must not be null.");
         
-        Sort.Direction sort = isAscending ? Sort.Direction.ASC : Sort.Direction.DESC;
+        final Sort.Direction sort = isAscending ? Sort.Direction.ASC : Sort.Direction.DESC;
         int page = pageNumber - 1;
         if (page < 0) {
             page = 0;
@@ -388,24 +369,24 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public List<T> toList() {
-        List<String> fields = getSelectFields();
-        joiner.initJoinMap(query);
-    
-        query.multiselect(getSelections(fields));
-        getPredicate(cb).ifPresent(query::where);
+        final List<String> fields = this.getSelectFields();
+        this.joiner.initJoinMap(this.query);
+
+        this.query.multiselect(this.getSelections(fields));
+        this.getPredicate(this.cb).ifPresent(this.query::where);
         
-        List<Object[]> tuple = em.createQuery(query).getResultList();
-        return tuple.stream().map(objectValues -> getObjectFrom(fields, objectValues)).collect(Collectors.toList());
+        final List<Object[]> tuple = em.createQuery(this.query).getResultList();
+        return tuple.stream().map(objectValues -> this.getObjectFrom(fields, objectValues)).collect(Collectors.toList());
     }
     
     private Optional<Predicate> getPredicate(final CriteriaBuilder cb) {
         Predicate whereClause = null;
-        for (QueryClause predicate : predicates) {
-            String tableName = getTableNameFrom(predicate.getClause().getTable());
-            From<?, ?> join = joiner.getJoin(tableName);
+        for (final QueryClause predicate : this.predicates) {
+            final String tableName = this.getTableNameFrom(predicate.getClause().getTable());
+            final From<?, ?> join = this.joiner.getJoin(tableName);
             
             if (whereClause == null) {
-                WhereClause clause = predicate.getClause();
+                final WhereClause clause = predicate.getClause();
                 whereClause = clause.getPredicate(cb, join);
                 continue;
             }
@@ -420,92 +401,92 @@ public class SearchCriteria<T, ROOT> implements ISearchCriteria<T, ROOT> {
     
     @Override
     public Set<T> toSet() {
-        return CollectionHelper.setOf(toList());
+        return CollectionHelper.setOf(this.toList());
     }
     @Override
     public Page<T> toPage() {
-        if (page == null) {
+        if (this.page == null) {
             throw new QueryException("Pageable undefined.");
         }
-        List<String> fields = getSelectFields();
-        joiner.initJoinMap(query);
+        final List<String> fields = this.getSelectFields();
+        this.joiner.initJoinMap(this.query);
+
+        this.query.multiselect(this.getSelections(fields));
+        this.getPredicate(this.cb).ifPresent(this.query::where);
     
-        query.multiselect(getSelections(fields));
-        getPredicate(cb).ifPresent(query::where);
-    
-        List<Object[]> tuple = em.createQuery(query)
-            .setFirstResult((int) page.getOffset())
-            .setMaxResults(page.getPageSize())
+        final List<Object[]> tuple = em.createQuery(this.query)
+            .setFirstResult((int) this.page.getOffset())
+            .setMaxResults(this.page.getPageSize())
             .getResultList();
         
-        List<T> items = tuple.stream()
-            .map(objectValues -> getObjectFrom(fields, objectValues))
+        final List<T> items = tuple.stream()
+            .map(objectValues -> this.getObjectFrom(fields, objectValues))
             .collect(Collectors.toList());
         
-        return new PageImpl<>(items, page, count());
+        return new PageImpl<>(items, this.page, this.count());
     }
     
     @Override
     public Optional<T> findFirst() {
         try {
-            List<String> fields = getSelectFields();
-            joiner.initJoinMap(query);
+            final List<String> fields = this.getSelectFields();
+            this.joiner.initJoinMap(this.query);
+
+            this.query.multiselect(this.getSelections(fields));
+            this.getPredicate(this.cb).ifPresent(this.query::where);
         
-            query.multiselect(getSelections(fields));
-            getPredicate(cb).ifPresent(query::where);
-        
-            Object[] value = em.createQuery(query).getSingleResult();
-            return Optional.ofNullable(getObjectFrom(fields, value));
-        } catch (NoResultException exception) {
+            final Object[] value = em.createQuery(this.query).getSingleResult();
+            return Optional.ofNullable(this.getObjectFrom(fields, value));
+        } catch (final NoResultException exception) {
             return Optional.empty();
         }
     }
     
     @Override
     public Long count() {
-        CriteriaQuery<Long> countQuery = em.getCriteriaBuilder().createQuery(Long.class);
+        final CriteriaQuery<Long> countQuery = em.getCriteriaBuilder().createQuery(Long.class);
+
+        this.joiner.initJoinMap(countQuery);
         
-        joiner.initJoinMap(countQuery);
-        
-        Expression<Long> selection = cb.count(cb.literal(1));
+        final Expression<Long> selection = this.cb.count(this.cb.literal(1));
         countQuery.multiselect(selection);
-        
-        getPredicate(cb).ifPresent(query::where);
+
+        this.getPredicate(this.cb).ifPresent(this.query::where);
         return em.createQuery(countQuery).getSingleResult();
     }
     
     @Override
     public boolean existAny() {
-        CriteriaBuilder cb = em.getCriteriaBuilder();
+        final CriteriaBuilder cb = em.getCriteriaBuilder();
         
-        CriteriaQuery<Long> query = cb.createQuery(Long.class);
-        joiner.initJoinMap(query);
+        final CriteriaQuery<Long> query = cb.createQuery(Long.class);
+        this.joiner.initJoinMap(query);
         
         query.select(this.cb.literal(1L));
-        getPredicate(this.cb).ifPresent(this.query::where);
+        this.getPredicate(this.cb).ifPresent(this.query::where);
         
-        List<Long> result = em.createQuery(query).setMaxResults(1).getResultList();
+        final List<Long> result = em.createQuery(query).setMaxResults(1).getResultList();
         return CollectionHelper.isNotEmpty(result);
     }
     
     private Selection<?>[] getSelections(final List<String> fields) {
-        return fields.stream().map(field -> joiner.getRoot().get(field)).toArray(Selection[]::new);
+        return fields.stream().map(field -> this.joiner.getRoot().get(field)).toArray(Selection[]::new);
     }
     
     private List<String> getSelectFields() {
         return ReflectionHelper
-            .getNonStaticFieldsOf(returnType).stream()
+            .getNonStaticFieldsOf(this.returnType).stream()
             .filter(CriteriaHelper::isColumn)
             .map(Field::getName).collect(Collectors.toList());
     }
     
     private T getObjectFrom(final List<String> fields, final Object[] values) {
-        HashMap<String, Object> fieldValueMap = CollectionHelper.emptyMap();
+        final HashMap<String, Object> fieldValueMap = CollectionHelper.emptyMap();
         for (int i = 0; i < fields.size() - 1; ++i) {
-            String field = fields.get(i);
-            Object value = values[i];
+            final String field = fields.get(i);
+            final Object value = values[i];
             fieldValueMap.put(field, value);
         }
-        return TypeHelper.convertFromMapToObject(returnType, fieldValueMap);
+        return TypeHelper.convertFromMapToObject(this.returnType, fieldValueMap);
     }
 }

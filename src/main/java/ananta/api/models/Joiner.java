@@ -9,11 +9,7 @@ import javax.persistence.criteria.From;
 import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Root;
 import java.lang.reflect.Field;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 public class Joiner {
     private final List<JoinPoint> joinPoints = CollectionHelper.emptyList();
@@ -24,70 +20,70 @@ public class Joiner {
     private Root<?> root;
     
     public JoinPoint getRootJoin() {
-        return rootJoin;
+        return this.rootJoin;
     }
     
     public Root<?> getRoot() {
-        return root;
+        return this.root;
     }
     
-    public void add(JoinPoint joinPoint) {
-        boolean isJoinPoint = rootJoin == null && joinPoints.isEmpty();
+    public void add(final JoinPoint joinPoint) {
+        final boolean isJoinPoint = this.rootJoin == null && this.joinPoints.isEmpty();
         if (isJoinPoint) {
-            putJoinPointToMap(joinPoint);
-            rootJoin = joinPoint;
+            this.putJoinPointToMap(joinPoint);
+            this.rootJoin = joinPoint;
             return;
         }
-        putJoinPointToMap(joinPoint);
-        joinPoints.add(joinPoint);
+        this.putJoinPointToMap(joinPoint);
+        this.joinPoints.add(joinPoint);
     }
     
-    private JoinPoint putJoinPointToMap(final JoinPoint joinPoint) {
-        String tableName = joinPoint.getTableName();
-        if (joinPointMap.containsKey(tableName)) {
+    private void putJoinPointToMap(final JoinPoint joinPoint) {
+        final String tableName = joinPoint.getTableName();
+        if (this.joinPointMap.containsKey(tableName)) {
             throw new QueryException("Table %s already declared.", tableName);
         }
-        return joinPointMap.put(tableName, joinPoint);
+        this.joinPointMap.put(tableName, joinPoint);
     }
     
-    public From<?, ?>  getJoin(String tableName) {
+    public From<?, ?>  getJoin(final String tableName) {
         return Optional
-            .ofNullable(joinMap.get(tableName))
+            .ofNullable(this.joinMap.get(tableName))
             .orElseThrow(() -> new QueryException("Can't find table %s", tableName));
     }
     
     
-    public Optional<JoinPoint> getJoinPoint(String tableName) {
+    public Optional<JoinPoint> getJoinPoint(final String tableName) {
         if (StringHelper.isBlank(tableName)) {
-            return Optional.ofNullable(rootJoin);
+            return Optional.ofNullable(this.rootJoin);
         }
-        return Optional.ofNullable(joinPointMap.get(tableName));
+        return Optional.ofNullable(this.joinPointMap.get(tableName));
     }
     
     
     public JoinPoint getLast() {
-        return joinPoints.isEmpty() ? rootJoin : CollectionHelper.getLastElementOf(joinPoints);
+        return this.joinPoints.isEmpty() ? this.rootJoin : CollectionHelper.getLastElementOf(this.joinPoints);
     }
     
-    public void initJoinMap(CriteriaQuery<?> query) {
-        joinMap.clear();
+    public void initJoinMap(final CriteriaQuery<?> query) {
+        this.joinMap.clear();
         
-        Root<?> root = query.from(this.rootJoin.getClazz());
+        final Root<?> root = query.from(this.rootJoin.getClazz());
         this.root = root;
         From<?, ?> lastJoin = root;
         Class<?> lastClass = this.rootJoin.getClazz();
+
+        this.joinMap.put(this.rootJoin.getTableName(), root);
         
-        joinMap.put(this.rootJoin.getTableName(), root);
-        
-        for (JoinPoint joinPoint : joinPoints) {
-            Class<?> finalLastClass = lastClass;
+        for (final JoinPoint joinPoint : this.joinPoints) {
+            final Class<?> finalLastClass = lastClass;
             
-            String fieldName = Optional.ofNullable(joinPoint.getField())
+            final String fieldName = Optional.ofNullable(joinPoint.getField())
                 .map(Field::getName)
-                .orElseGet(() -> getJoinField(finalLastClass, joinPoint.getClazz()).getName());
+                .orElseGet(() -> this.getJoinField(finalLastClass, joinPoint.getClazz()).getName());
             
-            Join<?, ?> newJoin = lastJoin.join(fieldName);
-            joinMap.put(joinPoint.getTableName(), newJoin);
+            final Join<?, ?> newJoin = lastJoin.join(fieldName);
+            this.joinMap.put(joinPoint.getTableName(), newJoin);
             
             lastJoin = newJoin;
             lastClass = joinPoint.getClazz();
@@ -96,7 +92,7 @@ public class Joiner {
     
     
     private <LEFT, RIGHT> Field getJoinField(final Class<LEFT> lastClass, final Class<RIGHT> newTableClass) {
-        List<Field> fields = ReflectionHelper.getFieldsOf(lastClass);
+        final List<Field> fields = ReflectionHelper.getFieldsOf(lastClass);
         return fields.stream()
             .filter(field -> {
                 if (Objects.equals(field.getType(), newTableClass)) {

@@ -14,6 +14,37 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface ISearchCriteria<T, ROOT> {
+    
+    public static interface ISelector<T, ROOT>  {
+        Joiner<T, ROOT> join(Class<?> clazz);
+        Joiner<T, ROOT> join(Class<?> clazz, String as);
+        Joiner<T, ROOT> join(String tableName);
+        Joiner<T, ROOT> join(String tableName, String as);
+    }
+    
+    public static interface Joiner<T, ROOT> {
+        Joiner<T, ROOT> join(Class<?> clazz);
+        Joiner<T, ROOT> join(Class<?> clazz, String as);
+        Joiner<T, ROOT> join(String tableName);
+        Joiner<T, ROOT> join(String tableName, String as);
+    
+        Conditioner<T, ROOT> where(String key, ForAll action, Object value);
+        Conditioner<T, ROOT> where(String key, ForString action, String value);
+        <NUMBER extends Comparable<? super NUMBER>> Conditioner<T, ROOT> where(String key, ForNumber action, NUMBER value);
+        Conditioner<T, ROOT> where(String key, ForCollection action, Collection<? extends Serializable> value);
+    
+    }
+    
+    public static interface Conditioner<T, ROOT> {
+        List<T> toList();
+        Set<T> toSet();
+        Page<T> toPage();
+        Optional<T> findFirst();
+    
+        Long count();
+        boolean existAny();
+    }
+    
     ISearchCriteria<T, ROOT> from(Class<ROOT> clazz);
     ISearchCriteria<T, ROOT> from(Class<ROOT> clazz, String as);
     ISearchCriteria<T, ROOT> from(String tableName);
